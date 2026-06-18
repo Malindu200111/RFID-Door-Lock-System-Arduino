@@ -1,0 +1,152 @@
+#include <LiquidCrystal_I2C.h>
+#include <MFRC522.h>
+// Define RC522 RFID module pins
+#define RST_PIN 9   // Reset pin
+#define SS_PIN 10   // Slave Select pin
+// Initialize MFRC522 instance
+MFRC522 rfid(SS_PIN, RST_PIN);
+// Initialize the I2C LCD (set the I2C address, usually 0x27 or 0x3F)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+void setup() {
+ // Initialize SPI and RC522 module
+ Serial.begin(9600);
+ SPI.begin();
+ rfid.PCD_Init();
+ // Initialize the LCD
+ lcd.init();
+ lcd.backlight();
+ lcd.setCursor(0, 0);
+ lcd.print("Scan RFID Card");
+ Serial.println("Scan RFID Card");
+}
+void loop() {
+ // Check if a new RFID card is present
+ if (!rfid.PICC_IsNewCardPresent()) {
+   return;
+ }
+ // Check if the RFID card can be read
+ if (!rfid.PICC_ReadCardSerial()) {
+   return;
+ }
+ // Clear LCD and display the UID
+ lcd.clear();
+ lcd.setCursor(0, 0);
+ lcd.print("Card UID:");
+ Serial.print("Card UID: ");
+ // Print the UID on the LCD
+ lcd.setCursor(0, 1);
+ for (byte i = 0; i < rfid.uid.size; i++) {
+   if (rfid.uid.uidByte[i] < 0x10) {
+     lcd.print("0"); // Add leading 0 for single-digit hex
+     Serial.print("0x0");
+   }
+   lcd.print(rfid.uid.uidByte[i], HEX); // Print UID byte in HEX format
+   Serial.print("0x");
+   Serial.print(rfid.uid.uidByte[i], HEX);
+   if (i < rfid.uid.size - 1) {
+     lcd.print(" "); // Add space between bytes
+     Serial.print(", ");
+   }
+   delay(1000);
+ }
+ // Halt communication with the card
+ rfid.PICC_HaltA();
+ // Wait for 10 seconds before clearing the LCD
+ delay(10000);
+ lcd.clear();
+ lcd.setCursor(0, 0);
+ lcd.print("Scan RFID Card");
+ Serial.println("\n");
+ Serial.println("Scan RFID Card");
+}
+#include <MFRC522.h>
+#include <LiquidCrystal_I2C.h>
+// Define RC522 pins
+#define RST_PIN 9
+#define SS_PIN 10
+// Relay pin
+#define RELAY_PIN 8
+// Initialize MFRC522 instance
+MFRC522 rfid(SS_PIN, RST_PIN);
+// Initialize LCD (address 0x27 may vary)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+// Authorized UID (replace with your tag's UID)
+byte authorizedUID[] = {0x69, 0xA9, 0x81, 0x5A};
+// Door status
+bool doorLocked = true;
+void setup() {
+ // Initialize SPI and RC522
+ SPI.begin();
+ rfid.PCD_Init();
+ // Initialize LCD
+ lcd.init();
+ lcd.backlight();
+ // Set up relay pin
+ pinMode(RELAY_PIN, OUTPUT);
+ // Display startup message
+ lcd.setCursor(0, 0);
+ lcd.print("RFID Door Lock");
+ delay(2000);
+ lcd.clear();
+ lockDoor(); // Start with door locked
+}
+void loop() {
+ // Check if a new RFID card is present
+ if (!rfid.PICC_IsNewCardPresent()) {
+   return;
+ }
+ // Check if the RFID card can be read
+ if (!rfid.PICC_ReadCardSerial()) {
+   return;
+ }
+ // Display scanned UID
+ lcd.clear();
+ lcd.setCursor(0, 0);
+ lcd.print("Scanning...");
+ delay(2000);
+ // Compare scanned UID with authorized UID
+ if (isAuthorized(rfid.uid.uidByte, rfid.uid.size)) {
+   lcd.setCursor(0, 1);
+   lcd.print("Access Granted!");
+   delay(2000);
+   unlockDoor(); // Lock or unlock the door
+ } else {
+   lcd.setCursor(0, 1);
+   lcd.print("Access Denied!");
+   delay(2000);
+   lockDoor();
+ }
+ // Halt communication with the card
+ rfid.PICC_HaltA();
+}
+// Function to check if UID matches authorized UID
+bool isAuthorized(byte *uid, byte size) {
+ if (size != sizeof(authorizedUID)) {
+   return false;
+ }
+ for (byte i = 0; i < size; i++) {
+   if (uid[i] != authorizedUID[i]) {
+     return false;
+   }
+ }
+ return true;
+}
+// Function to lock the door
+void lockDoor() {
+ digitalWrite(RELAY_PIN, LOW); // Turn OFF relay (lock engaged)
+ doorLocked = true;
+ lcd.clear();
+ lcd.setCursor(0, 0);
+ lcd.print("Door Locked");
+ delay(2000);
+}
+// Function to unlock the door
+void unlockDoor() {
+ digitalWrite(RELAY_PIN, HIGH); // Turn ON relay (unlock door)
+ doorLocked = false;
+ lcd.clear();
+ lcd.setCursor(0, 0);
+ lcd.print("Door Unlocked");
+ delay(10000); // Keep door unlocked for 5 seconds
+ lockDoor();  // Auto-lock after 5 seconds
+}
