@@ -1,3 +1,5 @@
+1.
+
 #include <LiquidCrystal_I2C.h>
 #include <MFRC522.h>
 // Define RC522 RFID module pins
@@ -59,6 +61,12 @@ void loop() {
  Serial.println("\n");
  Serial.println("Scan RFID Card");
 }
+
+
+2.
+
+
+
 #include <MFRC522.h>
 #include <LiquidCrystal_I2C.h>
 // Define RC522 pins
